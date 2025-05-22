@@ -19,7 +19,7 @@ user_answers = []
 for i, row in questions.iterrows():
     question_key = f"q{i}"
 
-    st.write(f"#### Q{i + 1}: {row['Question']}")
+    st.write(f"**{i + 1}: {row['Question']}**")
 
     # Build options dynamically including Option E if available and non-empty
     original_options = [row['Option A'], row['Option B'], row['Option C'], row['Option D']]
