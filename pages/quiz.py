@@ -112,6 +112,7 @@ if st.button("Submit"):
 
     percentage = round(score / len(questions) * 100, 2)
     if score >= passingScore:
+        st.balloons()
         st.success(f"You scored {score} out of {len(questions)}. ({percentage}%)")
     else:
         st.error(f"You scored {score} out of {len(questions)}. ({percentage}%)")
