@@ -6,63 +6,62 @@ st.set_page_config(page_title="QuizApp", page_icon='favicon.png')
 st.title("Exam")
 
 questions = st.session_state.questions
-passingScorePercent = st.session_state.passingScore
+passingScorePercent = st.session_state.passingScorePercent
 passingScore = len(questions) * (passingScorePercent / 100)
-
-# Store shuffled option states in session state only once
-if 'shuffled_options' not in st.session_state:
-    st.session_state.shuffled_options = {}
-
 user_answers = []
 
-# Phase 1: Initial selection UI
 for i, row in questions.iterrows():
-    question_key = f"q{i}"
+    question_key = f"q{i}"  # key used in shuffled_options dict
 
     st.write(f"**{i + 1}: {row['Question']}**")
 
-    # Build options dynamically including Option E if available and non-empty
-    original_options = [row['Option A'], row['Option B'], row['Option C'], row['Option D']]
+    # Dynamically gather available options (Option A, B, C, etc.)
+    # Check if columns exists in the index and if it is empty for the current row.
+    option_cols = [col for col in row.index if col.startswith('Option') and pd.notna(row[col]) and str(row[col]).strip()]
+    # Values of all the options
+    option_values = [row[col] for col in option_cols]
 
-    # Only include Option E if column exists AND cell is not empty or NaN
-    if 'Option E' in questions.columns and pd.notna(row['Option E']) and str(row['Option E']).strip():
-        original_options.append(row['Option E'])
-
-    # Extract correct answers
+    # Extract correct answer values based on letters
     correct_letters = [letter.strip().upper() for letter in row['Answer'].split(',')]
-    correct_values = [original_options[ord(letter) - ord('A')] for letter in correct_letters]
+    correct_values = [option_values[ord(letter) - ord('A')] for letter in correct_letters]
 
-    # Shuffle once and store in session_state
+    # Shuffle options and store them in session state if not already there
     if question_key not in st.session_state.shuffled_options:
-        shuffled = original_options[:]
+        shuffled = option_values[:]
         random.shuffle(shuffled)
         st.session_state.shuffled_options[question_key] = shuffled
     else:
         shuffled = st.session_state.shuffled_options[question_key]
 
-    # Label options A., B., C., ...
+    # Create labeled options like "A. [Option]"
     labeled_options = [f"{chr(65 + j)}. {option}" for j, option in enumerate(shuffled)]
-    option_label_to_value = dict(zip(labeled_options, shuffled))
-    value_to_label = {v: k for k, v in option_label_to_value.items()}
 
-    if len(correct_letters) == 1:
+    # Determine selected answer(s)
+    if len(correct_values) == 1:
         selected_label = st.radio(
             f"Select your answer for Q{i + 1}",
             labeled_options,
             index=None,
             key=question_key
         )
-        selected_value = option_label_to_value[selected_label] if selected_label else None
+        selected_value = None
+        # If the radio button is used get the value of the answer (using the index of the labeled option)
+        if selected_label:
+            selected_value = shuffled[labeled_options.index(selected_label)]
     else:
-        st.markdown(f"**Select {len(correct_letters)} answer(s)**")
+        st.markdown(f"**Select {len(correct_values)} answer(s)**")
         selected_labels = st.multiselect(
             f"Select your answers for Q{i + 1}",
             labeled_options,
             default=[],
             key=question_key
         )
-        selected_value = [option_label_to_value[label] for label in selected_labels]
+        selected_value = [
+            shuffled[labeled_options.index(label)] for label in selected_labels
+        ]
 
+    # Store answers for results phase
+    value_to_label = {v: f"{chr(65 + shuffled.index(v))}." for v in shuffled}
     user_answers.append((
         selected_value,
         correct_values,
@@ -78,6 +77,8 @@ if st.button("Submit"):
 
     for i, (user_answer, correct_values, question_text, options, value_to_label) in enumerate(user_answers):
         user_answer_list = user_answer if isinstance(user_answer, list) else [user_answer]
+
+        # print(value_to_label)
 
         is_correct = set(user_answer_list) == set(correct_values)
         if is_correct:
@@ -96,7 +97,7 @@ if st.button("Submit"):
             checked = opt in user_answer_list
             st.checkbox(label, value=checked, disabled=True, key=f"result_q{i}_{j}")
 
-        correct_display = ', '.join(f"{value_to_label[val]}" for val in correct_values)
+        correct_display = ', '.join(value_to_label[val] for val in correct_values)
         explanation_html = ""
 
         if "Explanation" in questions.columns:
