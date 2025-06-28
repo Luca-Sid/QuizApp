@@ -2,18 +2,28 @@ import streamlit as st
 import random
 import pandas as pd
 
+@st.dialog("Are you sure?")
+def confirmation():
+    st.markdown(f"The following questions have been marked for review:")
+    st.markdown(''.join([f"- {i+1} \n" for i in flagged_questions]))
+    st.markdown("**Close this dialog to review your answers**")
+    if st.button("I'm sure, I want to submit my answers."):
+        submit()
+
+def submit():
+    st.session_state.user_answers = user_answers
+    st.switch_page('pages/results.py')
+
 st.set_page_config(page_title="QuizApp", page_icon='favicon.png')
 st.title("Exam")
 
 questions = st.session_state.questions
-passingScorePercent = st.session_state.passingScorePercent
-passingScore = len(questions) * (passingScorePercent / 100)
 user_answers = []
+flagged_questions = []
 
 for i, row in questions.iterrows():
     question_key = f"q{i}"  # key used in shuffled_options dict
-
-    st.write(f"**{i + 1}: {row['Question']}**")
+    st.html(f"<span style='font-weight:600'>{i + 1}: {row['Question']}</span>")
 
     # Dynamically gather available options (Option A, B, C, etc.)
     # Check if columns exists in the index and if it is empty for the current row.
@@ -60,6 +70,11 @@ for i, row in questions.iterrows():
             shuffled[labeled_options.index(label)] for label in selected_labels
         ]
 
+    if st.checkbox("Flag question for later review", key=f"flag_{question_key}", label_visibility='visible'):
+        flagged_questions.append(i)
+
+    st.html("<br>")
+
     # Store answers for results phase
     value_to_label = {v: f"{chr(65 + shuffled.index(v))}." for v in shuffled}
     user_answers.append((
@@ -72,48 +87,7 @@ for i, row in questions.iterrows():
 
 # Phase 2: Submission and feedback rendering
 if st.button("Submit"):
-    score = 0
-    st.subheader("Results")
-
-    for i, (user_answer, correct_values, question_text, options, value_to_label) in enumerate(user_answers):
-        user_answer_list = user_answer if isinstance(user_answer, list) else [user_answer]
-
-        # print(value_to_label)
-
-        is_correct = set(user_answer_list) == set(correct_values)
-        if is_correct:
-            score += 1
-
-        bg_color = "#d4edda" if is_correct else "#f8d7da"
-        text_color = "#155724" if is_correct else "#721c24"
-
-        st.markdown(f"""
-        <div style="background-color:{bg_color}; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-            <strong style="color:{text_color};">Q{i + 1}: {question_text}</strong><br><br>
-        """, unsafe_allow_html=True)
-
-        for j, opt in enumerate(options):
-            label = f"{chr(65 + j)}. {opt}"
-            checked = opt in user_answer_list
-            st.checkbox(label, value=checked, disabled=True, key=f"result_q{i}_{j}")
-
-        correct_display = ', '.join(value_to_label[val] for val in correct_values)
-        explanation_html = ""
-
-        if "Explanation" in questions.columns:
-            explanation = questions.iloc[i].get('Explanation', None)
-            if explanation and isinstance(explanation, str):
-                explanation_html = f"<br><em style='color:{text_color};'>Explanation: {explanation}</em>"
-
-        st.markdown(f"""
-            <br><span style="color:{text_color};"><strong>{'Correct!' if is_correct else 'Incorrect.'}</strong> Correct answer(s): {correct_display}</span>
-            {explanation_html}
-        </div>
-        """, unsafe_allow_html=True)
-
-    percentage = round(score / len(questions) * 100, 2)
-    if score >= passingScore:
-        st.balloons()
-        st.success(f"You scored {score} out of {len(questions)}. ({percentage}%)")
+    if flagged_questions:
+        confirmation()
     else:
-        st.error(f"You scored {score} out of {len(questions)}. ({percentage}%)")
+        submit()
