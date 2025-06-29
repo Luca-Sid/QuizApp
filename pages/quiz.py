@@ -5,7 +5,7 @@ import pandas as pd
 @st.dialog("Are you sure?")
 def confirmation():
     st.markdown(f"The following questions have been marked for review:")
-    st.markdown(''.join([f"- {i+1} \n" for i in flagged_questions]))
+    st.markdown(' '.join([f"`{i+1}`" for i in flagged_questions]))
     st.markdown("**Close this dialog to review your answers**")
     if st.button("I'm sure, I want to submit my answers."):
         submit()
@@ -70,7 +70,7 @@ for i, row in questions.iterrows():
             shuffled[labeled_options.index(label)] for label in selected_labels
         ]
 
-    if st.checkbox("Flag question for later review", key=f"flag_{question_key}", label_visibility='visible'):
+    if st.checkbox("Flag this question for later review", key=f"flag_{question_key}"):
         flagged_questions.append(i)
 
     st.html("<br>")
@@ -85,7 +85,6 @@ for i, row in questions.iterrows():
         value_to_label
     ))
 
-# Phase 2: Submission and feedback rendering
 if st.button("Submit"):
     if flagged_questions:
         confirmation()

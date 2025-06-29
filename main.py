@@ -39,7 +39,6 @@ if quizFile:
         st.session_state.questions = df.sample(questionNum).reset_index(drop=True)
     else:
         st.session_state.questions = df
-        print(df.head())
 
     st.session_state.passingScorePercent = st.slider("What's the passing score % ?", step=1, min_value=1, max_value=100, value=65)
 
